@@ -1,0 +1,24 @@
+{
+    "Location and Travel": {
+        "where": 2.0,
+        "location": 2.0,
+        "address": 2.0,
+        "how to get there": 2.0,
+        "directions": 2.0,
+        "venue": 2.0
+    },
+    "Fees": {
+        "cost": 2.0,
+        "price": 2.0,
+        "fee": 2.0,
+        "how much": 2.0,
+        "€": 2.0,
+        "euro": 2.0,
+        "expensive": 2.0,
+        "cheap": 2.0
+    },
+    "General Information": {
+        "what is": 2.0,
+        "about": 1.5
+    }
+} 

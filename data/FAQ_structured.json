@@ -1,0 +1,130 @@
+{
+  "faqs": [
+    {
+      "category": "General Information",
+      "question": "What is Greenhouse?",
+      "question_variations": [
+        "What is Dunamis Greenhouse?",
+        "Tell me about Greenhouse",
+        "What is the Greenhouse program?",
+        "Explain Dunamis Greenhouse",
+        "What's the Greenhouse school?",
+        "What does Greenhouse offer?"
+      ],
+      "keywords": ["greenhouse", "dunamis", "school", "revival", "transformation", "program", "leadership", "holy spirit"],
+      "answer": "The Greenhouse is the Dunamis Movement's school of revival and transformation. It offers an immersive experience in leadership tools and activation of the supernatural gifts of the Holy Spirit, aiming to influence and impact the spheres of society with the power and radical love of Jesus. Students are encouraged to live out the Great Commission and go to all nations."
+    },
+    {
+      "category": "Dates and Registration",
+      "question": "What is the date of Greenhouse Europe 2025?",
+      "question_variations": [
+        "When is Greenhouse 2025?",
+        "What are the dates for Greenhouse?",
+        "When does Greenhouse start?",
+        "When does Greenhouse end?",
+        "What's the schedule for Greenhouse 2025?"
+      ],
+      "keywords": ["dates", "schedule", "2025", "july", "duration", "timeline"],
+      "answer": "July 09th to July 19th, 2025."
+    },
+    {
+      "category": "Registration Process",
+      "question": "How do I join Greenhouse?",
+      "question_variations": [
+        "How can I apply to Greenhouse?",
+        "How to register for Greenhouse?",
+        "What's the application process?",
+        "How do I sign up?",
+        "How to enroll in Greenhouse?"
+      ],
+      "keywords": ["registration", "apply", "join", "signup", "enroll", "application"],
+      "answer": "Sign up for our selection process via the following link: https://form.respondi.app/hefJH0HK"
+    },
+    {
+      "category": "Eligibility",
+      "question": "What is the minimum age to take part in the school?",
+      "question_variations": [
+        "What is the minimum age to attend Greenhouse?",
+        "Who can attend Greenhouse?",
+        "What's the minimum age for Greenhouse?"
+      ],
+      "answer": "Students must be at least 18 years old. Those between 16-18 must present an authorization form filled out and signed by their guardians at check-in. Minors must present a notarized letter of authorization from their guardians. There is no upper age limit."
+    },
+    {
+      "category": "Fees",
+      "question": "How much is the total fee and what's included?",
+      "question_variations": [
+        "What's the total fee for Greenhouse?",
+        "What's included in the fee?"
+      ],
+      "answer": "The total fee is 850€. This includes: student kit with teaching materials, meals (breakfast, lunch and dinner), and accommodation from July 9th to July 19th in Palermo, Italy."
+    },
+    {
+      "category": "Selection Process",
+      "question": "How does the recruitment process work?",
+      "question_variations": [
+        "How does the selection process work?",
+        "What's the selection process?"
+      ],
+      "answer": "After registering, our team will contact you for a 20-30 minute video call. The main criteria are: being over 16 years old, being a Christian, being connected to a local church, and having a desire to participate. Results are sent via email within 5 working days of the call."
+    },
+    {
+      "category": "Location and Travel",
+      "question": "Where is the school located and how do I get there?",
+      "question_variations": [
+        "Where is the school located?",
+        "How do I get to the school?",
+        "What's the location of Greenhouse?"
+      ],
+      "answer": "The school is located at SS 113 Settentrionale Sicula, 90047 Partinico PA, Italy. The nearest airport is Aeroporto di Palermo (PMO). Bus transportation will be available from PMO airport on July 9th (check-in) and July 19th (check-out)."
+    },
+    {
+      "category": "Accommodation",
+      "question": "What are the accommodation arrangements?",
+      "question_variations": [
+        "What's the accommodation?",
+        "What's the accommodation arrangements?"
+      ],
+      "answer": "Separate male and female dormitories are provided. Couples attending together should note they will be housed separately. The accommodation is not equipped for cooking or families with children."
+    },
+    {
+      "category": "Daily Schedule",
+      "question": "What is the daily routine at Greenhouse?",
+      "question_variations": [
+        "What's the daily routine at Greenhouse?",
+        "What's the daily schedule at Greenhouse?"
+      ],
+      "answer": "Mornings: praise, worship, devotional sessions, and practical training. Afternoons: classes, workshops, dynamics, training, and fellowship time. Evenings: Revival Nights with Dunamis Movement leaders and guests."
+    },
+    {
+      "category": "Mission Trips",
+      "question": "What are the mission trips?",
+      "question_variations": [
+        "What's the mission trips?"
+      ],
+      "answer": "Mission trips are optional 10-day trips after the school to practice what students have learned. They are not included in the school fee and have separate costs. Destinations and specific costs will be announced later. Registration for mission trips doesn't guarantee a place and requires an interview process."
+    },
+    {
+      "category": "Refund Policy",
+      "question": "What is the refund policy?",
+      "question_variations": [
+        "What is the refund policy?",
+        "What's the refund policy?"
+      ],
+      "answer": "Cancellation up to 60 days before: Full refund minus transfer fees. Cancellation within 30 days before: 60% refund. The 40% retention covers invested preparation costs. Refunds are processed after the course concludes."
+    },
+    {
+      "category": "Practical Information",
+      "question": "What should I pack?",
+      "question_variations": [
+        "What do I need to bring?",
+        "What items should I bring?",
+        "What should I take with me?",
+        "Required items for Greenhouse",
+        "Packing list for Greenhouse"
+      ],
+      "keywords": ["pack", "bring", "items", "requirements", "luggage"],
+      "answer": "Required items: ID/passport, sunblock, towels, personal hygiene items, Bible, notebook, writing materials, water bottle, comfortable clothes, cash. Recommended: Universal plug adapter. Pack a medium-sized suitcase and a backpack, considering the hot summer weather (23°C to 35°C)."
+    }
+  ]
+} 

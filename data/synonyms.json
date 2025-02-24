@@ -1,0 +1,23 @@
+{
+    "transport_synonyms": {
+        "uber": ["transportation", "bus", "travel"],
+        "taxi": ["transportation", "bus", "travel"],
+        "bus": ["transportation", "travel"],
+        "get there": ["transportation", "travel", "directions"],
+        "arrive": ["transportation", "travel"],
+        "reach": ["transportation", "travel"],
+        "airport": ["fly", "flight", "travel", "transportation"]
+    },
+    "activity_synonyms": {
+        "happen": ["activities", "schedule", "routine", "daily"],
+        "activities": ["schedule", "routine", "daily"],
+        "program": ["schedule", "routine", "daily"],
+        "do": ["activities", "schedule", "routine"]
+    },
+    "question_synonyms": {
+        "accommodation": ["stay", "housing", "room", "dormitory", "acomodation", "accomodation"],
+        "airport": ["fly", "flight", "travel", "transportation"],
+        "activities": ["schedule", "program", "routine", "daily", "do"],
+        "interview": ["selection", "process", "approval", "application"]
+    }
+} 

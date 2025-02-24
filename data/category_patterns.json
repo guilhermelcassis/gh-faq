@@ -1,0 +1,29 @@
+{
+    "Location and Travel": [
+        "(?:where|location|address|place).*(?:is|are|located|find)",
+        "how.*(?:to|do|can).*(?:get|reach|arrive|travel).*(?:there|school)",
+        "(?:airport|transportation|bus|taxi|uber).*(?:to|from|available)",
+        "directions?.*(?:to|for|school)",
+        ".*airport"
+    ],
+    "Daily Schedule": [
+        "what.*(?:happen|do|activities|schedule)",
+        "daily.*(?:routine|schedule|activities)",
+        "program.*(?:activities|schedule)",
+        "what.*during.*(?:school|day)",
+        "how.*(?:is|are).*(?:days|activities)",
+        "what.*will.*(?:i|we).*do"
+    ],
+    "Accommodation": [
+        "(?:where|how).*(?:stay|sleep|live)",
+        "(?:accommodation|housing|room|dormitory)",
+        "(?:acomodation|accomodation|acommodation)",
+        "living.*arrangements"
+    ],
+    "Selection Process": [
+        "(?:how|what).*(?:selection|process|approved)",
+        "(?:interview|application|selection)",
+        "how.*(?:join|apply|register)",
+        "what.*requirements"
+    ]
+} 

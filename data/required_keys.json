@@ -1,0 +1,22 @@
+{
+    "category_weights": [
+        "Location and Travel",
+        "Fees",
+        "General Information"
+    ],
+    "transport_synonyms": [
+        "uber",
+        "taxi",
+        "bus"
+    ],
+    "activity_synonyms": [
+        "happen",
+        "activities",
+        "program"
+    ],
+    "category_patterns": [
+        "Location and Travel",
+        "Daily Schedule",
+        "Accommodation"
+    ]
+} 

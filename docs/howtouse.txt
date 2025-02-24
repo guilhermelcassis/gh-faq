@@ -1,0 +1,69 @@
+
+## Setup
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+
+2. **Create a `.env` file** in the root directory with the following content:
+   ```plaintext
+   PINECONE_API_KEY=your_api_key_here
+   HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Prepare the FAQ data**:
+   Ensure that the `FAQ_structured.json` file is present in the root directory.
+
+## How to Use
+1. **Create the Pinecone Index**:
+   Run the following command to create the Pinecone index:
+   ```bash
+   python create_pinecone_index.py
+   ```
+
+2. **Load FAQ Data into Pinecone**:
+   Use the following command to load the FAQ data into the Pinecone index:
+   ```bash
+   python pinecone_ops.py
+   ```
+
+3. **Start the FastAPI Application**:
+   Run the FastAPI application using:
+   ```bash
+   python main.py
+   ```
+
+4. **Query the FAQ System**:
+   You can send POST requests to the `/ask` endpoint with a JSON body containing your question:
+   ```json
+   {
+     "question": "What is Greenhouse?"
+   }
+   ```
+
+5. **Health Check**:
+   You can check the health of the application by sending a GET request to the `/health` endpoint.
+
+## File Descriptions
+- **`create_pinecone_index.py`**: Initializes a Pinecone index for storing and querying vector embeddings.
+- **`embedding_pinecone.py`**: Handles the embedding of FAQ data.
+- **`embeddings.py`**: Contains the `EmbeddingGenerator` class for generating embeddings.
+- **`main.py`**: Entry point for the FastAPI application.
+- **`FAQ_structured.json`**: Contains structured FAQ data.
+- **`FAQ.txt`**: Human-readable FAQ format.
+- **`pinecone_ops.py`**: Manages operations related to Pinecone.
+- **`RAG_main.py`**: Implements the FAQ search system.
+- **`rag_utils.py`**: Contains utility functions for enhancing the retrieval process.
+- **`pinecone_test.py`**: Tests the Pinecone integration.
+
+## Contributing
+Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+
+## License
+This project is licensed under the MIT License. See the LICENSE file for details.
