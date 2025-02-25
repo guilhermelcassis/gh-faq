@@ -1,0 +1,24 @@
+{
+    "question": "Will there be mission trips?"
+}
+{
+    "question": "Is it expensive?"
+}
+{
+    "question": "How much does it cost?"
+}
+{
+    "question": "How do I get to the school?"
+}
+{
+    "question": "Where will GH be?"
+}
+{
+    "question": "How can I get to the school?"
+}
+{
+    "question": "What will I do at school?" (need to improve FAQ for this question)
+}
+{
+    "question": "What will happen at Greenhouse?"
+}

@@ -225,6 +225,14 @@ def enhanced_search(question: str, index) -> List[Dict]:
         # Log the raw results for debugging
         logger.info(f"Raw search results for '{question}': {matches}")
         
+        # If no results from vector search, try keyword-based fallback
+        if not matches:
+            logger.warning(f"No vector search results for '{question}', trying fallback...")
+            fallback_results = keyword_fallback_search(question)
+            if fallback_results:
+                logger.info(f"Fallback search found {len(fallback_results)} results")
+                return fallback_results
+        
         # Use the loaded question patterns
         # Check for pattern matches in the question
         for pattern_type, pattern_info in question_patterns.items():
@@ -398,16 +406,19 @@ async def get_index_stats():
         logger.error(f"Error getting index stats: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-# Update this function to be more robust
 def ensure_faq_data_loaded():
     try:
         # Check if data exists in the index
         stats = index.describe_index_stats()
         logger.info(f"Index stats: {stats}")
         
-        # Force reload data if empty or very few vectors
-        if not hasattr(stats, 'total_vector_count') or stats.total_vector_count < 5:
-            logger.info("Index appears empty, loading FAQ data...")
+        # Check if we're running in Docker
+        in_docker = os.path.exists('/.dockerenv')
+        logger.info(f"Running in Docker: {in_docker}")
+        
+        # Force reload data if empty, few vectors, or in Docker
+        if in_docker or not hasattr(stats, 'total_vector_count') or stats.total_vector_count < 5:
+            logger.info("Loading FAQ data into Pinecone...")
             
             # Load FAQ data with better error handling
             import json
@@ -439,33 +450,46 @@ def ensure_faq_data_loaded():
             # Prepare vectors for upsert
             vectors = []
             for i, faq in enumerate(faq_data['faqs']):
-                # Generate embedding for the question
-                question_embedding = generate_embedding(faq['question'])
+                try:
+                    # Generate embedding for the question
+                    question_embedding = generate_embedding(faq['question'])
+                    
+                    # Create vector with metadata
+                    vectors.append({
+                        'id': f"faq_{i}",
+                        'values': question_embedding,
+                        'metadata': {
+                            'question': faq['question'],
+                            'question_variations': faq.get('question_variations', []),
+                            'category': faq['category'],
+                            'answer': faq['answer'],
+                            'keywords': faq.get('keywords', [])
+                        }
+                    })
+                    logger.info(f"Created embedding for: {faq['question']}")
+                except Exception as e:
+                    logger.error(f"Error creating embedding for FAQ {i}: {str(e)}")
+            
+            if not vectors:
+                logger.error("No vectors created for FAQ data!")
+                return
                 
-                # Create vector with metadata
-                vectors.append({
-                    'id': f"faq_{i}",
-                    'values': question_embedding,
-                    'metadata': {
-                        'question': faq['question'],
-                        'question_variations': faq.get('question_variations', []),
-                        'category': faq['category'],
-                        'answer': faq['answer'],
-                        'keywords': faq.get('keywords', [])
-                    }
-                })
+            logger.info(f"Upserting {len(vectors)} vectors to Pinecone...")
             
             # Upsert vectors to Pinecone
-            if use_new_sdk:
-                index.upsert(vectors=vectors, namespace=NAMESPACE)
-            else:
-                index.upsert(vectors=vectors, namespace=NAMESPACE)
+            try:
+                if use_new_sdk:
+                    index.upsert(vectors=vectors, namespace=NAMESPACE)
+                else:
+                    index.upsert(vectors=vectors, namespace=NAMESPACE)
+                    
+                logger.info(f"Successfully loaded {len(vectors)} FAQ entries into Pinecone")
                 
-            logger.info(f"Loaded {len(vectors)} FAQ entries into Pinecone")
-            
-            # Verify data was loaded
-            stats = index.describe_index_stats()
-            logger.info(f"Updated index stats: {stats}")
+                # Verify data was loaded
+                stats = index.describe_index_stats()
+                logger.info(f"Updated index stats: {stats}")
+            except Exception as e:
+                logger.error(f"Error upserting vectors to Pinecone: {str(e)}", exc_info=True)
     except Exception as e:
         logger.error(f"Error ensuring FAQ data: {str(e)}", exc_info=True)
 
@@ -528,6 +552,150 @@ def load_question_patterns():
 
 # Load question patterns
 question_patterns = load_question_patterns()
+
+# Add this function to check Pinecone connectivity
+def check_pinecone_connectivity():
+    try:
+        if use_new_sdk:
+            indexes = pc.list_indexes().names()
+            logger.info(f"Successfully connected to Pinecone. Available indexes: {indexes}")
+            
+            if PINECONE_INDEX_NAME in indexes:
+                stats = index.describe_index_stats()
+                logger.info(f"Index '{PINECONE_INDEX_NAME}' stats: {stats}")
+                
+                # Check if index is empty
+                if hasattr(stats, 'total_vector_count') and stats.total_vector_count == 0:
+                    logger.warning(f"Index '{PINECONE_INDEX_NAME}' exists but is empty!")
+                    return False
+                return True
+            else:
+                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes!")
+                return False
+        else:
+            # Old SDK
+            indexes = pinecone.list_indexes()
+            logger.info(f"Successfully connected to Pinecone. Available indexes: {indexes}")
+            
+            if PINECONE_INDEX_NAME in indexes:
+                stats = index.describe_index_stats()
+                logger.info(f"Index '{PINECONE_INDEX_NAME}' stats: {stats}")
+                
+                # Check if index is empty
+                if 'total_vector_count' in stats and stats['total_vector_count'] == 0:
+                    logger.warning(f"Index '{PINECONE_INDEX_NAME}' exists but is empty!")
+                    return False
+                return True
+            else:
+                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes!")
+                return False
+    except Exception as e:
+        logger.error(f"Error checking Pinecone connectivity: {str(e)}", exc_info=True)
+        return False
+
+# Call this function after initializing Pinecone
+pinecone_connected = check_pinecone_connectivity()
+
+def keyword_fallback_search(question: str) -> List[Dict]:
+    """Fallback search using keywords when vector search fails."""
+    try:
+        # Load FAQ data
+        import json
+        import os
+        
+        # Try multiple possible locations for the FAQ file
+        possible_paths = [
+            'data/FAQ_structured.json',
+            '/app/data/FAQ_structured.json',
+            './data/FAQ_structured.json',
+            '../data/FAQ_structured.json'
+        ]
+        
+        faq_data = None
+        for path in possible_paths:
+            try:
+                if os.path.exists(path):
+                    with open(path, 'r') as f:
+                        faq_data = json.load(f)
+                    break
+            except Exception:
+                continue
+        
+        if not faq_data:
+            logger.error("Could not find FAQ data file for fallback search!")
+            return []
+        
+        # Normalize question
+        normalized_question = question.lower()
+        
+        # Check for pattern matches
+        for pattern_type, pattern_info in question_patterns.items():
+            if any(p in normalized_question for p in pattern_info['patterns']):
+                logger.info(f"Fallback detected {pattern_type} pattern in question: {question}")
+                
+                # Find FAQs in matching categories
+                matching_faqs = []
+                for faq in faq_data['faqs']:
+                    if faq['category'] in pattern_info['categories']:
+                        # Check if answer contains relevant terms
+                        answer = faq['answer'].lower()
+                        if any(term in answer for term in pattern_info['answer_terms']):
+                            matching_faqs.append({
+                                'metadata': {
+                                    'question': faq['question'],
+                                    'question_variations': faq.get('question_variations', []),
+                                    'category': faq['category'],
+                                    'answer': faq['answer'],
+                                    'keywords': faq.get('keywords', [])
+                                },
+                                'score': 0.9
+                            })
+                
+                if matching_faqs:
+                    return matching_faqs
+        
+        # If no pattern match, try keyword matching
+        keywords = normalized_question.split()
+        scored_faqs = []
+        
+        for faq in faq_data['faqs']:
+            # Check question and variations
+            match_score = 0
+            
+            # Check direct question
+            if any(kw in faq['question'].lower() for kw in keywords):
+                match_score += 0.5
+            
+            # Check variations
+            for var in faq.get('question_variations', []):
+                if any(kw in var.lower() for kw in keywords):
+                    match_score += 0.3
+                    break
+            
+            # Check keywords
+            for kw in faq.get('keywords', []):
+                if kw.lower() in normalized_question:
+                    match_score += 0.2
+            
+            if match_score > 0.4:
+                scored_faqs.append({
+                    'metadata': {
+                        'question': faq['question'],
+                        'question_variations': faq.get('question_variations', []),
+                        'category': faq['category'],
+                        'answer': faq['answer'],
+                        'keywords': faq.get('keywords', [])
+                    },
+                    'score': match_score
+                })
+        
+        # Sort and return top results
+        scored_faqs.sort(key=lambda x: x['score'], reverse=True)
+        return scored_faqs[:3]
+        
+    except Exception as e:
+        logger.error(f"Error in fallback search: {str(e)}", exc_info=True)
+        return []
 
 if __name__ == "__main__":
     import uvicorn
