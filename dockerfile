@@ -57,3 +57,6 @@ ENV PINECONE_ENVIRONMENT=us-east-1
 ENV DIMENSION=768
 ENV MODEL_NAME=distilbert-base-uncased
 ENV NAMESPACE=""
+
+# For testing only - remove this in production
+ENV PINECONE_API_KEY=pcsk_6cvKjN_G4nyUvQitRTSDzDuoM9ro1EbHDYrYMz764iDpPpuyay6FyLiEtKpuHwmTrCxzHY

@@ -28,177 +28,42 @@ Example:
     load_faq_to_pinecone("FAQ_structured.json")
 """
 
-import logging
-from config.config import pc, INDEX_NAME, NAMESPACE, DIMENSION, PINECONE_API_KEY, PINECONE_INDEX_NAME, MODEL_NAME, PINECONE_ENVIRONMENT
-from pinecone import ServerlessSpec
-import time
+import os
 import json
+import logging
+from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModel
 import torch
-from typing import List, Dict
-from pinecone import Pinecone
-import re
-from nltk.tokenize import word_tokenize
-import nltk
 
+# Load environment variables
+load_dotenv()
+
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class PineconeManager:
-    def __init__(self):
-        self.index = pc.Index(INDEX_NAME)
-    
-    def delete_index(self):
-        """Delete the existing index if it exists"""
-        try:
-            pc.delete_index(INDEX_NAME)
-            logging.info(f"Deleted index '{INDEX_NAME}'")
-        except Exception as e:
-            logging.error(f"Error deleting index: {e}")
-            raise
+# Get configuration from environment
+PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME', 'gh-faq-index')
+PINECONE_ENVIRONMENT = os.getenv('PINECONE_ENVIRONMENT', 'us-east-1')
+DIMENSION = int(os.getenv('DIMENSION', '768'))
+MODEL_NAME = os.getenv('MODEL_NAME', 'distilbert-base-uncased')
+NAMESPACE = os.getenv('NAMESPACE', 'ns1')  # Use ns1 as default namespace
 
-    def create_index(self):
-        """Create a new index"""
-        try:
-            pc.create_index(
-                name=INDEX_NAME,
-                dimension=DIMENSION,
-                metric="cosine",
-                spec=ServerlessSpec(
-                    cloud="aws",
-                    region=PINECONE_ENVIRONMENT
-                )
-            )
-            logging.info(f"Created index '{INDEX_NAME}'")
-            # Wait for the index to be ready
-            while not pc.describe_index(INDEX_NAME).status['ready']:
-                time.sleep(1)
-        except Exception as e:
-            if "already exists" in str(e):
-                logging.info(f"Index '{INDEX_NAME}' already exists")
-            else:
-                raise
-    
-    def upsert_vectors(self, vectors):
-        try:
-            self.index.upsert(vectors=vectors, namespace=NAMESPACE)
-            logging.info(f"Successfully upserted {len(vectors)} vectors")
-        except Exception as e:
-            logging.error(f"Error upserting vectors: {e}")
-            raise
-    
-    def query(self, vector, top_k=5):
-        try:
-            results = self.index.query(
-                vector=vector,
-                top_k=top_k,
-                namespace=NAMESPACE,
-                include_metadata=True
-            )
-            return results
-        except Exception as e:
-            logging.error(f"Error querying index: {e}")
-            raise 
+# Initialize embedding model
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModel.from_pretrained(MODEL_NAME)
 
-def load_faq_to_pinecone(json_file: str):
-    """Load FAQ data from JSON file to Pinecone index."""
-    try:
-        # Initialize models
-        logger.info("Initializing models...")
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModel.from_pretrained(MODEL_NAME)
-        
-        # Initialize Pinecone
-        logger.info("Connecting to Pinecone...")
-        pc = Pinecone(api_key=PINECONE_API_KEY)
-        index = pc.Index(PINECONE_INDEX_NAME)
-        
-        # Load FAQ data
-        logger.info(f"Loading FAQ data from {json_file}...")
-        with open(json_file, 'r', encoding='utf-8') as f:
-            faq_data = json.load(f)
-            
-        # Convert to list if it's a dictionary
-        if isinstance(faq_data, dict):
-            faq_data = list(faq_data.values())
-        
-        # Process and upsert vectors
-        batch_size = 100
-        total_processed = 0
-        vectors = []
-        
-        logger.info(f"Processing {len(faq_data)} FAQ items...")
-        
-        for idx, item in enumerate(faq_data['faqs']):
-            # Create vectors for main question and variations
-            vectors = []
-            
-            # Combine all relevant information
-            base_text = f"""
-            Category: {item['category']}
-            Keywords: {', '.join(item['keywords'])}
-            Question: {item['question']}
-            Answer: {item['answer']}
-            """
-            
-            # Create main vector
-            main_vector = create_vector(
-                text=base_text,
-                id=f"faq_{idx}_main",
-                metadata={
-                    'question': item['question'],
-                    'answer': item['answer'],
-                    'category': item['category'],
-                    'keywords': item['keywords'],
-                    'is_main': True
-                },
-                tokenizer=tokenizer,
-                model=model
-            )
-            vectors.append(main_vector)
-            
-            # Create vectors for variations
-            for var_idx, variation in enumerate(item['question_variations']):
-                var_text = f"""
-                Category: {item['category']}
-                Keywords: {', '.join(item['keywords'])}
-                Question: {variation}
-                Related Question: {item['question']}
-                Answer: {item['answer']}
-                """
-                
-                var_vector = create_vector(
-                    text=var_text,
-                    id=f"faq_{idx}_var_{var_idx}",
-                    metadata={
-                        'question': variation,
-                        'main_question': item['question'],
-                        'answer': item['answer'],
-                        'category': item['category'],
-                        'keywords': item['keywords'],
-                        'is_variation': True
-                    },
-                    tokenizer=tokenizer,
-                    model=model
-                )
-                vectors.append(var_vector)
-            
-            # Batch upsert
-            index.upsert(vectors=vectors)
-            logger.info(f"Uploaded vectors for FAQ {idx}: 1 main + {len(item['question_variations'])} variations")
-        
-        # Get index stats
-        stats = index.describe_index_stats()
-        logger.info(f"Index stats after upload: {stats}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error in load_faq_to_pinecone: {str(e)}", exc_info=True)
-        raise
+# Try new SDK first
+try:
+    from pinecone import Pinecone
+    use_new_sdk = True
+except ImportError:
+    import pinecone
+    use_new_sdk = False
 
-def create_vector(text: str, id: str, metadata: dict, tokenizer, model) -> dict:
-    """Create a vector with enhanced context."""
+def generate_embedding(text):
+    """Generate embeddings for semantic search."""
     inputs = tokenizer(
         text,
         return_tensors="pt",
@@ -209,29 +74,137 @@ def create_vector(text: str, id: str, metadata: dict, tokenizer, model) -> dict:
     
     with torch.no_grad():
         outputs = model(**inputs)
-        embedding = outputs.last_hidden_state[0].mean(dim=0)
+        embeddings = outputs.last_hidden_state[0].mean(dim=0)
     
-    return {
-        'id': id,
-        'values': embedding.tolist(),
-        'metadata': metadata
-    }
+    return embeddings.tolist()
 
-def extract_keywords(text: str) -> List[str]:
-    """Extract important keywords from text."""
-    # Tokenize and tag parts of speech
-    tokens = word_tokenize(text.lower())
-    tagged = nltk.pos_tag(tokens)
-    
-    # Keep nouns and verbs
-    important_tags = {'NN', 'NNS', 'NNP', 'NNPS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'}
-    keywords = [word for word, tag in tagged if tag in important_tags]
-    
-    return keywords
+def initialize_pinecone():
+    """Initialize Pinecone and return the index."""
+    if use_new_sdk:
+        # New SDK initialization
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+        
+        # Check if index exists and create it if it doesn't
+        try:
+            # List available indexes
+            indexes = pc.list_indexes().names()
+            logger.info(f"Available Pinecone indexes: {indexes}")
+            
+            if PINECONE_INDEX_NAME not in indexes:
+                logger.info(f"Creating new index: {PINECONE_INDEX_NAME}")
+                from pinecone import ServerlessSpec
+                
+                pc.create_index(
+                    name=PINECONE_INDEX_NAME,
+                    dimension=DIMENSION,
+                    metric='cosine',
+                    spec=ServerlessSpec(
+                        cloud='aws',
+                        region='us-east-1'
+                    )
+                )
+                logger.info(f"Index {PINECONE_INDEX_NAME} created successfully")
+            
+            # Now connect to the index
+            index = pc.Index(PINECONE_INDEX_NAME)
+            return index
+        except Exception as e:
+            logger.error(f"Error with Pinecone index: {str(e)}")
+            raise
+    else:
+        # Old SDK initialization
+        pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+        
+        # Check if index exists
+        if PINECONE_INDEX_NAME not in pinecone.list_indexes():
+            # Create index with old SDK
+            pinecone.create_index(
+                name=PINECONE_INDEX_NAME,
+                dimension=DIMENSION,
+                metric='cosine'
+            )
+            logger.info(f"Index {PINECONE_INDEX_NAME} created successfully")
+        
+        # Connect to index with old SDK
+        index = pinecone.Index(PINECONE_INDEX_NAME)
+        return index
+
+def upload_faq_data(index, faq_file_path='data/FAQ_structured.json'):
+    """Upload FAQ data to Pinecone."""
+    try:
+        # Load FAQ data
+        with open(faq_file_path, 'r') as f:
+            faq_data = json.load(f)
+        
+        # Clear existing vectors if any
+        try:
+            if use_new_sdk:
+                index.delete(delete_all=True, namespace=NAMESPACE)
+            else:
+                index.delete(delete_all=True, namespace=NAMESPACE)
+            logger.info(f"Cleared existing vectors from namespace {NAMESPACE}")
+        except Exception as e:
+            logger.warning(f"Error clearing vectors: {str(e)}")
+        
+        # Prepare vectors for upsert
+        vectors = []
+        for i, faq in enumerate(faq_data['faqs']):
+            try:
+                # Generate embedding for the question
+                question_embedding = generate_embedding(faq['question'])
+                
+                # Create vector with metadata
+                vectors.append({
+                    'id': f"faq_{i}",
+                    'values': question_embedding,
+                    'metadata': {
+                        'question': faq['question'],
+                        'question_variations': faq.get('question_variations', []),
+                        'category': faq['category'],
+                        'answer': faq['answer'],
+                        'keywords': faq.get('keywords', [])
+                    }
+                })
+                logger.info(f"Created embedding for: {faq['question']}")
+            except Exception as e:
+                logger.error(f"Error creating embedding for FAQ {i}: {str(e)}")
+        
+        if not vectors:
+            logger.error("No vectors created for FAQ data!")
+            return False
+            
+        logger.info(f"Upserting {len(vectors)} vectors to Pinecone namespace {NAMESPACE}...")
+        
+        # Upsert vectors to Pinecone in batches to avoid timeouts
+        batch_size = 50
+        for i in range(0, len(vectors), batch_size):
+            batch = vectors[i:i+batch_size]
+            try:
+                if use_new_sdk:
+                    index.upsert(vectors=batch, namespace=NAMESPACE)
+                else:
+                    index.upsert(vectors=batch, namespace=NAMESPACE)
+                logger.info(f"Uploaded batch {i//batch_size + 1}/{(len(vectors)-1)//batch_size + 1}")
+            except Exception as e:
+                logger.error(f"Error upserting batch to Pinecone: {str(e)}")
+                return False
+                
+        logger.info(f"Successfully loaded {len(vectors)} FAQ entries into Pinecone namespace {NAMESPACE}")
+        
+        # Verify data was loaded
+        try:
+            stats = index.describe_index_stats()
+            logger.info(f"Updated index stats: {stats}")
+            return True
+        except Exception as e:
+            logger.error(f"Error verifying data load: {str(e)}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error uploading FAQ data: {str(e)}", exc_info=True)
+        return False
 
 if __name__ == "__main__":
-    try:
-        load_faq_to_pinecone("FAQ_structured.json")
-        logger.info("Successfully loaded FAQ data to Pinecone")
-    except Exception as e:
-        logger.error(f"Failed to load FAQ data: {str(e)}") 
+    # This script can be run directly to initialize and populate the index
+    index = initialize_pinecone()
+    upload_faq_data(index)
