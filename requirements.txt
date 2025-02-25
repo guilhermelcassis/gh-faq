@@ -1,20 +1,24 @@
 # Core dependencies
 huggingface-hub==0.16.4
-sentence-transformers>=2.2.2
-pinecone-client>=2.2.4
-python-dotenv>=1.0.0
+sentence-transformers==2.2.2
+pinecone==2.2.4
+python-dotenv==1.0.0
 
 # Data processing
-pandas>=2.0.0
-numpy>=1.24.0
+pandas==2.0.3
+numpy==1.24.3
 
 # API and web
-fastapi>=0.100.0
-uvicorn>=0.23.0
+fastapi==0.100.1
+uvicorn[standard]==0.23.2
 
 # Vector operations
-scikit-learn>=1.3.0
+scikit-learn==1.3.0
+
+# Text processing
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.21.1  # Optional but recommended for better performance with fuzzywuzzy
 
 # Utilities
-tqdm>=4.65.0
-requests>=2.31.0 
+tqdm==4.65.0
+requests==2.31.0 

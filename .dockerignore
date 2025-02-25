@@ -1,0 +1,34 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Additional changes from the code block
+.pytest_cache/
+.coverage
+htmlcov/

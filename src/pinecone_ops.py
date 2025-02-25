@@ -32,7 +32,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
-from config.config import pc, INDEX_NAME, NAMESPACE, DIMENSION, PINECONE_API_KEY, PINECONE_INDEX_NAME, MODEL_NAME
+from config.config import pc, INDEX_NAME, NAMESPACE, DIMENSION, PINECONE_ENVIRONMENT, MODEL_NAME
 from pinecone import ServerlessSpec
 import time
 import json
@@ -70,7 +70,7 @@ class PineconeManager:
                 metric="cosine",
                 spec=ServerlessSpec(
                     cloud="aws",
-                    region="us-east-1"
+                    region=PINECONE_ENVIRONMENT
                 )
             )
             logging.info(f"Created index '{INDEX_NAME}'")

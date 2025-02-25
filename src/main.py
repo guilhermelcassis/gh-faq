@@ -19,16 +19,28 @@ from config.config import (
     MODEL_NAME,
     PINECONE_INDEX_NAME,
     NAMESPACE,
-    DIMENSION
+    DIMENSION,
+    PINECONE_ENVIRONMENT
 )
-from rag_utils import RAGEnhancer
+from src.rag_utils import RAGEnhancer
 from datetime import datetime
+import tensorflow as tf
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Configure TensorFlow settings before any model loading
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        logger.error(f"GPU configuration error: {e}")
 
 # Initialize embedding model for semantic search
 embed_tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -39,8 +51,37 @@ qa_model = T5ForConditionalGeneration.from_pretrained('google/flan-t5-large')
 qa_tokenizer = T5Tokenizer.from_pretrained('google/flan-t5-large')
 
 # Initialize Pinecone
-pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index(PINECONE_INDEX_NAME)
+pc = Pinecone(
+    api_key=PINECONE_API_KEY
+)
+
+# Check if index exists and create it if it doesn't
+try:
+    # List available indexes
+    indexes = pc.list_indexes().names()
+    logger.info(f"Available Pinecone indexes: {indexes}")
+    
+    if PINECONE_INDEX_NAME not in indexes:
+        logger.info(f"Creating new index: {PINECONE_INDEX_NAME}")
+        from pinecone import ServerlessSpec
+        
+        pc.create_index(
+            name=PINECONE_INDEX_NAME,
+            dimension=DIMENSION,
+            metric='cosine',
+            spec=ServerlessSpec(
+                cloud='aws',
+                region='us-east-1'  # Match your existing index configuration
+            )
+        )
+        logger.info(f"Index {PINECONE_INDEX_NAME} created successfully")
+    
+    # Now connect to the index
+    index = pc.Index(PINECONE_INDEX_NAME)
+    logger.info(f"Successfully connected to index: {PINECONE_INDEX_NAME}")
+except Exception as e:
+    logger.error(f"Error with Pinecone index: {str(e)}")
+    raise
 
 # Initialize RAG enhancer
 rag_enhancer = RAGEnhancer()
@@ -264,6 +305,12 @@ async def get_index_stats():
         logger.error(f"Error getting index stats: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "____":
+if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "src.main:app",
+        host="0.0.0.0", 
+        port=8000, 
+        workers=1,
+        log_level="info"
+    )

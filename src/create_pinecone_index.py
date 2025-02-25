@@ -46,7 +46,7 @@ try:
         metric="cosine",  # Replace with your model metric
         spec=ServerlessSpec(
             cloud="aws",
-            region="us-east-1"
+            region=PINECONE_ENVIRONMENT
         )
     )
     logging.info(f"Created index '{index_name}'.")
