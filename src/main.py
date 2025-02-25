@@ -4,8 +4,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from pinecone import Pinecone
-import torch
 from transformers import (
     AutoTokenizer, 
     AutoModel,
@@ -25,6 +23,7 @@ from config.config import (
 from src.rag_utils import RAGEnhancer
 from datetime import datetime
 import tensorflow as tf
+import torch
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -50,38 +49,63 @@ embed_model = AutoModel.from_pretrained(MODEL_NAME)
 qa_model = T5ForConditionalGeneration.from_pretrained('google/flan-t5-large')
 qa_tokenizer = T5Tokenizer.from_pretrained('google/flan-t5-large')
 
-# Initialize Pinecone
-pc = Pinecone(
-    api_key=PINECONE_API_KEY
-)
-
-# Check if index exists and create it if it doesn't
+# Replace the Pinecone import with this conditional import
 try:
-    # List available indexes
-    indexes = pc.list_indexes().names()
-    logger.info(f"Available Pinecone indexes: {indexes}")
+    # Try new SDK first
+    from pinecone import Pinecone
+    use_new_sdk = True
+except ImportError:
+    # Fall back to old SDK
+    import pinecone
+    use_new_sdk = False
+
+# Then modify your initialization code
+if use_new_sdk:
+    # New SDK initialization
+    pc = Pinecone(api_key=PINECONE_API_KEY)
     
-    if PINECONE_INDEX_NAME not in indexes:
-        logger.info(f"Creating new index: {PINECONE_INDEX_NAME}")
-        from pinecone import ServerlessSpec
+    # Check if index exists and create it if it doesn't
+    try:
+        # List available indexes
+        indexes = pc.list_indexes().names()
+        logger.info(f"Available Pinecone indexes: {indexes}")
         
-        pc.create_index(
+        if PINECONE_INDEX_NAME not in indexes:
+            logger.info(f"Creating new index: {PINECONE_INDEX_NAME}")
+            from pinecone import ServerlessSpec
+            
+            pc.create_index(
+                name=PINECONE_INDEX_NAME,
+                dimension=DIMENSION,
+                metric='cosine',
+                spec=ServerlessSpec(
+                    cloud='aws',
+                    region='us-east-1'
+                )
+            )
+            logger.info(f"Index {PINECONE_INDEX_NAME} created successfully")
+        
+        # Now connect to the index
+        index = pc.Index(PINECONE_INDEX_NAME)
+    except Exception as e:
+        logger.error(f"Error with Pinecone index: {str(e)}")
+        raise
+else:
+    # Old SDK initialization
+    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
+    
+    # Check if index exists
+    if PINECONE_INDEX_NAME not in pinecone.list_indexes():
+        # Create index with old SDK
+        pinecone.create_index(
             name=PINECONE_INDEX_NAME,
             dimension=DIMENSION,
-            metric='cosine',
-            spec=ServerlessSpec(
-                cloud='aws',
-                region='us-east-1'  # Match your existing index configuration
-            )
+            metric='cosine'
         )
         logger.info(f"Index {PINECONE_INDEX_NAME} created successfully")
     
-    # Now connect to the index
-    index = pc.Index(PINECONE_INDEX_NAME)
-    logger.info(f"Successfully connected to index: {PINECONE_INDEX_NAME}")
-except Exception as e:
-    logger.error(f"Error with Pinecone index: {str(e)}")
-    raise
+    # Connect to index with old SDK
+    index = pinecone.Index(PINECONE_INDEX_NAME)
 
 # Initialize RAG enhancer
 rag_enhancer = RAGEnhancer()
@@ -173,44 +197,47 @@ def enhanced_search(question: str, index) -> List[Dict]:
         embedding = generate_embedding(normalized_question)
         
         # Get initial results
-        results = index.query(
-            vector=embedding,
-            top_k=5,
-            include_metadata=True,
-            namespace=NAMESPACE
-        )
+        if use_new_sdk:
+            # New SDK query syntax
+            results = index.query(
+                vector=embedding,
+                top_k=5,
+                include_metadata=True,
+                namespace=NAMESPACE
+            )
+            # Convert to a consistent format
+            matches = []
+            for match in results.matches:
+                matches.append({
+                    'metadata': match.metadata,
+                    'score': match.score
+                })
+        else:
+            # Old SDK query syntax
+            results = index.query(
+                vector=embedding,
+                top_k=5,
+                include_metadata=True,
+                namespace=NAMESPACE
+            )
+            matches = [{'metadata': match['metadata'], 'score': match['score']} for match in results['matches']]
+        
+        # Log the raw results for debugging
+        logger.info(f"Raw search results for '{question}': {matches}")
         
         # Enhanced scoring with better category matching
         scored_results = []
-        for match in results.matches:
-            metadata = match.metadata
+        for match in matches:
+            metadata = match['metadata']
             category = metadata.get('category', '')
             
-            # Special handling for transportation questions
-            if any(term in question.lower() for term in ['uber', 'taxi', 'transport']):
-                if 'bus transportation' in metadata.get('answer', '').lower():
-                    category_score = 1.0
-                    category_weight = 2.0
-            else:
-                category_score = rag_enhancer.match_patterns(
-                    normalized_question,
-                    category
-                )
-                category_weight = rag_enhancer.get_category_weight(
-                    normalized_question, 
-                    category
-                )
+            # Direct match check for exact questions
+            if question.lower() in [q.lower() for q in metadata.get('question_variations', [])]:
+                logger.info(f"Found direct match for question: {question}")
+                return [{'metadata': metadata, 'score': 1.0}]
             
             # Calculate final score
-            final_score = (
-                match.score * 0.3 +
-                category_score * 0.4 +
-                rag_enhancer.compute_question_similarity(
-                    normalized_question,
-                    metadata.get('question', ''),
-                    metadata.get('question_variations', [])
-                ) * 0.3
-            ) * category_weight
+            final_score = match['score']
             
             scored_results.append({
                 'metadata': metadata,
@@ -219,7 +246,10 @@ def enhanced_search(question: str, index) -> List[Dict]:
         
         # Sort and filter
         scored_results.sort(key=lambda x: x['score'], reverse=True)
-        return [r for r in scored_results if r['score'] > 0.4]
+        filtered_results = [r for r in scored_results if r['score'] > 0.4]
+        
+        logger.info(f"Final scored results: {filtered_results}")
+        return filtered_results
         
     except Exception as e:
         logger.error(f"Error in enhanced search: {str(e)}", exc_info=True)
@@ -304,6 +334,51 @@ async def get_index_stats():
     except Exception as e:
         logger.error(f"Error getting index stats: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add this after your index initialization
+def ensure_faq_data_loaded():
+    try:
+        # Check if data exists in the index
+        stats = index.describe_index_stats()
+        if stats.total_vector_count == 0:
+            logger.info("Index is empty, loading FAQ data...")
+            
+            # Load FAQ data
+            import json
+            with open('data/FAQ_structured.json', 'r') as f:
+                faq_data = json.load(f)
+            
+            # Prepare vectors for upsert
+            vectors = []
+            for i, faq in enumerate(faq_data['faqs']):
+                # Generate embedding for the question
+                question_embedding = generate_embedding(faq['question'])
+                
+                # Create vector with metadata
+                vectors.append({
+                    'id': f"faq_{i}",
+                    'values': question_embedding,
+                    'metadata': {
+                        'question': faq['question'],
+                        'question_variations': faq.get('question_variations', []),
+                        'category': faq['category'],
+                        'answer': faq['answer'],
+                        'keywords': faq.get('keywords', [])
+                    }
+                })
+            
+            # Upsert vectors to Pinecone
+            if use_new_sdk:
+                index.upsert(vectors=vectors, namespace=NAMESPACE)
+            else:
+                index.upsert(vectors=vectors, namespace=NAMESPACE)
+                
+            logger.info(f"Loaded {len(vectors)} FAQ entries into Pinecone")
+    except Exception as e:
+        logger.error(f"Error ensuring FAQ data: {str(e)}")
+
+# Call this function after index initialization
+ensure_faq_data_loaded()
 
 if __name__ == "__main__":
     import uvicorn
