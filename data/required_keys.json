@@ -12,7 +12,14 @@
     "activity_synonyms": [
         "happen",
         "activities",
-        "program"
+        "program",
+        "do",
+        "happen",
+        "happenings",
+        "happenings at",
+        "happenings in",
+        "happenings at school",
+        "happenings in school"
     ],
     "category_patterns": [
         "Location and Travel",

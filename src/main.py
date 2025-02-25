@@ -24,6 +24,20 @@ from src.rag_utils import RAGEnhancer
 from datetime import datetime
 import tensorflow as tf
 import torch
+import logging
+from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+# Load environment variables from .env file
+load_dotenv()
+
+# Now log the API key (first few characters only for security)
+api_key = os.getenv('PINECONE_API_KEY', '')
+if api_key:
+    logger.info(f"Loaded API key from .env: {api_key[:5]}...")
+else:
+    logger.error("No API key found in environment variables!")
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -109,6 +123,11 @@ else:
 
 # Initialize RAG enhancer
 rag_enhancer = RAGEnhancer()
+
+# Add this right after loading config values
+logger.info(f"Using Pinecone index: {PINECONE_INDEX_NAME}")
+logger.info(f"Using Pinecone environment: {PINECONE_ENVIRONMENT}")
+logger.info(f"Using namespace: {NAMESPACE}")
 
 class QuestionRequest(BaseModel):
     question: str
@@ -560,7 +579,14 @@ def check_pinecone_connectivity():
             indexes = pc.list_indexes().names()
             logger.info(f"Successfully connected to Pinecone. Available indexes: {indexes}")
             
-            if PINECONE_INDEX_NAME in indexes:
+            # Check if we're using the correct index name
+            if PINECONE_INDEX_NAME not in indexes:
+                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes: {indexes}")
+                logger.error("Please check your PINECONE_INDEX_NAME environment variable")
+                return False
+                
+            # Now connect to the index and check stats
+            try:
                 stats = index.describe_index_stats()
                 logger.info(f"Index '{PINECONE_INDEX_NAME}' stats: {stats}")
                 
@@ -569,15 +595,22 @@ def check_pinecone_connectivity():
                     logger.warning(f"Index '{PINECONE_INDEX_NAME}' exists but is empty!")
                     return False
                 return True
-            else:
-                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes!")
+            except Exception as e:
+                logger.error(f"Error accessing index '{PINECONE_INDEX_NAME}': {str(e)}")
                 return False
         else:
             # Old SDK
             indexes = pinecone.list_indexes()
             logger.info(f"Successfully connected to Pinecone. Available indexes: {indexes}")
             
-            if PINECONE_INDEX_NAME in indexes:
+            # Check if we're using the correct index name
+            if PINECONE_INDEX_NAME not in indexes:
+                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes: {indexes}")
+                logger.error("Please check your PINECONE_INDEX_NAME environment variable")
+                return False
+                
+            # Now check stats
+            try:
                 stats = index.describe_index_stats()
                 logger.info(f"Index '{PINECONE_INDEX_NAME}' stats: {stats}")
                 
@@ -586,8 +619,8 @@ def check_pinecone_connectivity():
                     logger.warning(f"Index '{PINECONE_INDEX_NAME}' exists but is empty!")
                     return False
                 return True
-            else:
-                logger.error(f"Index '{PINECONE_INDEX_NAME}' not found in available indexes!")
+            except Exception as e:
+                logger.error(f"Error accessing index '{PINECONE_INDEX_NAME}': {str(e)}")
                 return False
     except Exception as e:
         logger.error(f"Error checking Pinecone connectivity: {str(e)}", exc_info=True)
@@ -627,6 +660,40 @@ def keyword_fallback_search(question: str) -> List[Dict]:
         
         # Normalize question
         normalized_question = question.lower()
+        
+        # Special case handling for common questions
+        if any(term in normalized_question for term in ['where', 'location', 'get to', 'address']):
+            # Look for location-related FAQs
+            for faq in faq_data['faqs']:
+                if 'Location and Travel' in faq['category']:
+                    logger.info(f"Fallback found location-related FAQ: {faq['question']}")
+                    return [{
+                        'metadata': {
+                            'question': faq['question'],
+                            'question_variations': faq.get('question_variations', []),
+                            'category': faq['category'],
+                            'answer': faq['answer'],
+                            'keywords': faq.get('keywords', [])
+                        },
+                        'score': 0.95
+                    }]
+        
+        # Check for cost/price related questions
+        if any(term in normalized_question for term in ['cost', 'price', 'fee', 'expensive', 'cheap']):
+            # Look for fee-related FAQs
+            for faq in faq_data['faqs']:
+                if 'Fees' in faq['category']:
+                    logger.info(f"Fallback found fee-related FAQ: {faq['question']}")
+                    return [{
+                        'metadata': {
+                            'question': faq['question'],
+                            'question_variations': faq.get('question_variations', []),
+                            'category': faq['category'],
+                            'answer': faq['answer'],
+                            'keywords': faq.get('keywords', [])
+                        },
+                        'score': 0.95
+                    }]
         
         # Check for pattern matches
         for pattern_type, pattern_info in question_patterns.items():

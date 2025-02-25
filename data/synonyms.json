@@ -12,7 +12,7 @@
         "happen": ["activities", "schedule", "routine", "daily"],
         "activities": ["schedule", "routine", "daily"],
         "program": ["schedule", "routine", "daily"],
-        "do": ["activities", "schedule", "routine"]
+        "do": ["activities", "schedule", "routine","do", "happenings", "happenings at", "happenings in", "happenings at school", "happenings in school"]
     },
     "question_synonyms": {
         "accommodation": ["stay", "housing", "room", "dormitory", "acomodation", "accomodation"],

@@ -12,7 +12,8 @@
         "program.*(?:activities|schedule)",
         "what.*during.*(?:school|day)",
         "how.*(?:is|are).*(?:days|activities)",
-        "what.*will.*(?:i|we).*do"
+        "what.*will.*(?:i|we).*do*",
+        "what.*will.*happen.*(?:at|in).*school"
     ],
     "Accommodation": [
         "(?:where|how).*(?:stay|sleep|live)",

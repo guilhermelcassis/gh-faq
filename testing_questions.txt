@@ -20,5 +20,5 @@
     "question": "What will I do at school?" (need to improve FAQ for this question)
 }
 {
-    "question": "What will happen at Greenhouse?"
+    "question": "How do I apply to a mission trip?"
 }

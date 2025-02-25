@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --upgrade pinecone-client==3.0.0 \
     && pip install tensorflow==2.12.0 \
     && pip install numpy==1.23.5 scikit-learn==1.2.2 \
+    && pip install python-dotenv \
     && rm -rf ~/.cache/pip/*
 
 # Copy the .env file
@@ -42,9 +43,17 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application using uvicorn
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Add this before your CMD
+SHELL ["/bin/bash", "-c"]
+CMD set -a && source .env && set +a && uvicorn src.main:app --host 0.0.0.0 --port 8000
 
 # Add this to ensure environment variables are properly set
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+
+# Add these environment variables explicitly (non-sensitive ones only)
+ENV PINECONE_INDEX_NAME=gh-faq-index
+ENV PINECONE_ENVIRONMENT=us-east-1
+ENV DIMENSION=768
+ENV MODEL_NAME=distilbert-base-uncased
+ENV NAMESPACE=""
