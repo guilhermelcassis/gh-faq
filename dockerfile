@@ -41,11 +41,11 @@ RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose the port the app runs on
-EXPOSE 8000
+EXPOSE 8080
 
 # Add this before your CMD
 SHELL ["/bin/bash", "-c"]
-CMD set -a && source .env && set +a && uvicorn src.main:app --host 0.0.0.0 --port 8000
+CMD set -a && source .env && set +a && uvicorn src.main:app --host 0.0.0.0 --port 8080
 
 # Add this to ensure environment variables are properly set
 ENV PYTHONUNBUFFERED=1
@@ -56,7 +56,4 @@ ENV PINECONE_INDEX_NAME=gh-faq-index
 ENV PINECONE_ENVIRONMENT=us-east-1
 ENV DIMENSION=768
 ENV MODEL_NAME=distilbert-base-uncased
-ENV NAMESPACE=""
-
-# For testing only - remove this in production
-ENV PINECONE_API_KEY=pcsk_6cvKjN_G4nyUvQitRTSDzDuoM9ro1EbHDYrYMz764iDpPpuyay6FyLiEtKpuHwmTrCxzHY
+ENV NAMESPACE=ns1
