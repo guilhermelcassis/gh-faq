@@ -201,7 +201,7 @@ def enhanced_search(question: str, index) -> List[Dict]:
             # New SDK query syntax
             results = index.query(
                 vector=embedding,
-                top_k=5,
+                top_k=15,
                 include_metadata=True,
                 namespace=NAMESPACE
             )
@@ -216,7 +216,7 @@ def enhanced_search(question: str, index) -> List[Dict]:
             # Old SDK query syntax
             results = index.query(
                 vector=embedding,
-                top_k=5,
+                top_k=15,
                 include_metadata=True,
                 namespace=NAMESPACE
             )
@@ -225,19 +225,82 @@ def enhanced_search(question: str, index) -> List[Dict]:
         # Log the raw results for debugging
         logger.info(f"Raw search results for '{question}': {matches}")
         
-        # Enhanced scoring with better category matching
+        # Use the loaded question patterns
+        # Check for pattern matches in the question
+        for pattern_type, pattern_info in question_patterns.items():
+            if any(p in normalized_question.lower() for p in pattern_info['patterns']):
+                logger.info(f"Detected {pattern_type} pattern in question: {question}")
+                
+                # First try to find a direct category match
+                for match in matches:
+                    metadata = match['metadata']
+                    if metadata.get('category', '') in pattern_info['categories']:
+                        # Check if answer contains relevant terms
+                        answer = metadata.get('answer', '').lower()
+                        if any(term in answer for term in pattern_info['answer_terms']):
+                            logger.info(f"Found {pattern_type}-related answer with matching category")
+                            return [{'metadata': metadata, 'score': 0.98}]
+                
+                # If no direct category match, look for answer terms in any result
+                for match in matches:
+                    metadata = match['metadata']
+                    answer = metadata.get('answer', '').lower()
+                    if any(term in answer for term in pattern_info['answer_terms']):
+                        logger.info(f"Found {pattern_type}-related answer based on answer content")
+                        return [{'metadata': metadata, 'score': 0.95}]
+        
+        # Enhanced scoring with keyword matching and question similarity
         scored_results = []
+        
+        # Extract key terms from the question
+        question_terms = set(normalized_question.lower().split())
+        
         for match in matches:
             metadata = match['metadata']
             category = metadata.get('category', '')
             
-            # Direct match check for exact questions
+            # 1. Direct match check for exact questions or variations
             if question.lower() in [q.lower() for q in metadata.get('question_variations', [])]:
                 logger.info(f"Found direct match for question: {question}")
                 return [{'metadata': metadata, 'score': 1.0}]
             
-            # Calculate final score
-            final_score = match['score']
+            # Check for partial matches in question variations
+            variation_scores = []
+            for variation in metadata.get('question_variations', []):
+                variation_terms = set(variation.lower().split())
+                overlap = len(question_terms.intersection(variation_terms)) / max(1, len(question_terms))
+                variation_scores.append(overlap)
+            
+            variation_score = max(variation_scores) if variation_scores else 0
+            
+            # 2. Check for keyword matches
+            keyword_score = 0
+            keywords = metadata.get('keywords', [])
+            if keywords:
+                matching_keywords = sum(1 for k in keywords if k.lower() in normalized_question.lower())
+                if matching_keywords > 0:
+                    keyword_score = matching_keywords / len(keywords)
+            
+            # 3. Check for question term overlap
+            question_text = metadata.get('question', '').lower()
+            question_terms_in_metadata = set(question_text.split())
+            term_overlap = len(question_terms.intersection(question_terms_in_metadata)) / max(1, len(question_terms))
+            
+            # 4. Check for category relevance
+            category_terms = set(category.lower().split())
+            category_match = len(question_terms.intersection(category_terms)) / max(1, len(category_terms))
+            
+            # 5. Check for answer relevance to question
+            answer_text = metadata.get('answer', '').lower()
+            
+            # Calculate final score with weighted components
+            final_score = (
+                match['score'] * 0.3 +         # Vector similarity
+                keyword_score * 0.15 +         # Keyword matching
+                term_overlap * 0.15 +          # Question term overlap
+                category_match * 0.15 +        # Category relevance
+                variation_score * 0.25         # Question variation match
+            )
             
             scored_results.append({
                 'metadata': metadata,
@@ -246,7 +309,7 @@ def enhanced_search(question: str, index) -> List[Dict]:
         
         # Sort and filter
         scored_results.sort(key=lambda x: x['score'], reverse=True)
-        filtered_results = [r for r in scored_results if r['score'] > 0.4]
+        filtered_results = [r for r in scored_results if r['score'] > 0.5]  # Increase threshold
         
         logger.info(f"Final scored results: {filtered_results}")
         return filtered_results
@@ -335,18 +398,43 @@ async def get_index_stats():
         logger.error(f"Error getting index stats: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-# Add this after your index initialization
+# Update this function to be more robust
 def ensure_faq_data_loaded():
     try:
         # Check if data exists in the index
         stats = index.describe_index_stats()
-        if stats.total_vector_count == 0:
-            logger.info("Index is empty, loading FAQ data...")
+        logger.info(f"Index stats: {stats}")
+        
+        # Force reload data if empty or very few vectors
+        if not hasattr(stats, 'total_vector_count') or stats.total_vector_count < 5:
+            logger.info("Index appears empty, loading FAQ data...")
             
-            # Load FAQ data
+            # Load FAQ data with better error handling
             import json
-            with open('data/FAQ_structured.json', 'r') as f:
-                faq_data = json.load(f)
+            import os
+            
+            # Try multiple possible locations for the FAQ file
+            possible_paths = [
+                'data/FAQ_structured.json',
+                '/app/data/FAQ_structured.json',
+                './data/FAQ_structured.json',
+                '../data/FAQ_structured.json'
+            ]
+            
+            faq_data = None
+            for path in possible_paths:
+                try:
+                    if os.path.exists(path):
+                        logger.info(f"Found FAQ data at: {path}")
+                        with open(path, 'r') as f:
+                            faq_data = json.load(f)
+                        break
+                except Exception as e:
+                    logger.warning(f"Could not load from {path}: {str(e)}")
+            
+            if not faq_data:
+                logger.error("Could not find FAQ data file!")
+                return
             
             # Prepare vectors for upsert
             vectors = []
@@ -374,11 +462,72 @@ def ensure_faq_data_loaded():
                 index.upsert(vectors=vectors, namespace=NAMESPACE)
                 
             logger.info(f"Loaded {len(vectors)} FAQ entries into Pinecone")
+            
+            # Verify data was loaded
+            stats = index.describe_index_stats()
+            logger.info(f"Updated index stats: {stats}")
     except Exception as e:
-        logger.error(f"Error ensuring FAQ data: {str(e)}")
+        logger.error(f"Error ensuring FAQ data: {str(e)}", exc_info=True)
 
 # Call this function after index initialization
 ensure_faq_data_loaded()
+
+def load_question_patterns():
+    """Load question patterns from JSON file with fallback to default patterns."""
+    import json
+    import os
+    
+    # Default patterns in case file loading fails
+    default_patterns = {
+        'cost': {
+            'patterns': ['cost', 'price', 'fee', 'expensive', 'cheap', 'afford', 'payment', 'pay', 'money', 'euros', '€'],
+            'categories': ['Fees'],
+            'answer_terms': ['€', 'euro', 'cost', 'fee', 'price', '850']
+        },
+        'location': {
+            'patterns': ['where', 'location', 'place', 'address', 'city', 'country', 'venue'],
+            'categories': ['Location and Travel'],
+            'answer_terms': ['located', 'location', 'address', 'italy', 'palermo']
+        },
+        'mission': {
+            'patterns': ['mission', 'trip', 'travel', 'after school', 'outreach'],
+            'categories': ['Mission Trips'],
+            'answer_terms': ['mission', 'trip', 'optional', '10-day']
+        },
+        'interview': {
+            'patterns': ['interview', 'selection', 'recruitment', 'process', 'apply', 'application'],
+            'categories': ['Selection Process'],
+            'answer_terms': ['process', 'selection', 'call', 'video', 'criteria']
+        },
+        'registration': {
+            'patterns': ['register', 'sign up', 'join', 'apply', 'enroll', 'application'],
+            'categories': ['Registration Process'],
+            'answer_terms': ['sign up', 'register', 'apply', 'link', 'form']
+        }
+    }
+    
+    # Try to load from file
+    possible_paths = [
+        'data/question_patterns.json',
+        '/app/data/question_patterns.json',
+        './data/question_patterns.json',
+        '../data/question_patterns.json'
+    ]
+    
+    for path in possible_paths:
+        try:
+            if os.path.exists(path):
+                logger.info(f"Loading question patterns from: {path}")
+                with open(path, 'r') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load patterns from {path}: {str(e)}")
+    
+    logger.warning("Using default question patterns as file could not be loaded")
+    return default_patterns
+
+# Load question patterns
+question_patterns = load_question_patterns()
 
 if __name__ == "__main__":
     import uvicorn

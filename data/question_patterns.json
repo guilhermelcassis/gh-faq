@@ -1,0 +1,27 @@
+{
+  "cost": {
+    "patterns": ["cost", "price", "fee", "expensive", "cheap", "afford", "payment", "pay", "money", "euros", "€"],
+    "categories": ["Fees"],
+    "answer_terms": ["€", "euro", "cost", "fee", "price", "850"]
+  },
+  "location": {
+    "patterns": ["where", "location", "place", "address", "city", "country", "venue"],
+    "categories": ["Location and Travel"],
+    "answer_terms": ["located", "location", "address", "italy", "palermo"]
+  },
+  "mission": {
+    "patterns": ["mission", "trip", "travel", "after school", "outreach"],
+    "categories": ["Mission Trips"],
+    "answer_terms": ["mission", "trip", "optional", "10-day"]
+  },
+  "interview": {
+    "patterns": ["interview", "selection", "recruitment", "process", "apply", "application"],
+    "categories": ["Selection Process"],
+    "answer_terms": ["process", "selection", "call", "video", "criteria"]
+  },
+  "registration": {
+    "patterns": ["register", "sign up", "join", "apply", "enroll", "application"],
+    "categories": ["Registration Process"],
+    "answer_terms": ["sign up", "register", "apply", "link", "form"]
+  }
+} 

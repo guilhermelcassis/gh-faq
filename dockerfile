@@ -13,9 +13,11 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies with specific versions to avoid conflicts
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --upgrade pinecone-client tensorflow \
+    && pip install --upgrade pinecone-client==3.0.0 \
+    && pip install tensorflow==2.12.0 \
+    && pip install numpy==1.23.5 scikit-learn==1.2.2 \
     && rm -rf ~/.cache/pip/*
 
 # Copy the .env file
@@ -23,6 +25,15 @@ COPY .env ./
 
 # Copy the rest of the application
 COPY . .
+
+# Make sure the data directory exists and is copied correctly
+RUN mkdir -p /app/data
+COPY data/FAQ_structured.json /app/data/
+COPY data/question_patterns.json /app/data/
+COPY data/category_weights.json /app/data/
+COPY data/category_patterns.json /app/data/
+COPY data/required_keys.json /app/data/
+COPY data/synonyms.json /app/data/
 
 # Create a non-root user
 RUN useradd -m appuser && chown -R appuser:appuser /app
