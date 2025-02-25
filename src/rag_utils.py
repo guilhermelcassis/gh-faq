@@ -29,11 +29,17 @@ class RAGEnhancer:
                 synonyms = json.load(f)
                 self.transport_synonyms = synonyms["transport_synonyms"]
                 self.activity_synonyms = synonyms["activity_synonyms"]
-                self.question_synonyms = synonyms["question_synonyms"]
+                self.accommodation_synonyms = synonyms.get("accommodation_synonyms", {})
+                self.fee_synonyms = synonyms.get("fee_synonyms", {})
+                self.selection_synonyms = synonyms.get("selection_synonyms", {})
 
             # Load category patterns
             with open(self.config_dir / "category_patterns.json", "r") as f:
                 self.category_patterns = json.load(f)
+                
+            # Load question patterns
+            with open(self.config_dir / "question_patterns.json", "r") as f:
+                self.question_patterns = json.load(f)
 
             # Validate the loaded configurations
             self._validate_configurations()
@@ -56,7 +62,16 @@ class RAGEnhancer:
             
             # Validate configurations
             for config_name, required in required_keys.items():
-                config = getattr(self, config_name, {})
+                if config_name == "category_weights":
+                    config = self.category_weights
+                elif config_name.endswith("_synonyms"):
+                    synonym_type = config_name
+                    config = getattr(self, synonym_type, {})
+                elif config_name == "category_patterns":
+                    config = self.category_patterns
+                else:
+                    config = {}
+                    
                 missing = [key for key in required if key not in config]
                 if missing:
                     logger.warning(f"Missing required keys in {config_name}: {missing}")
@@ -364,5 +379,53 @@ class RAGEnhancer:
             if key in question:
                 for syn in synonyms:
                     question = f"{question} {syn}"
+                    
+        # Replace accommodation-related terms
+        for key, synonyms in self.accommodation_synonyms.items():
+            if key in question:
+                for syn in synonyms:
+                    question = f"{question} {syn}"
+                    
+        # Replace fee-related terms
+        for key, synonyms in self.fee_synonyms.items():
+            if key in question:
+                for syn in synonyms:
+                    question = f"{question} {syn}"
+                    
+        # Replace selection-related terms
+        for key, synonyms in self.selection_synonyms.items():
+            if key in question:
+                for syn in synonyms:
+                    question = f"{question} {syn}"
         
-        return question 
+        return question
+        
+    def get_question_category(self, question: str) -> str:
+        """Determine the most likely category for a question.
+        
+        This method analyzes a question and returns the most likely category
+        based on pattern matching from question_patterns.json.
+        
+        Args:
+            question (str): The question to categorize.
+            
+        Returns:
+            str: The most likely category for the question.
+        """
+        question_lower = question.lower()
+        best_match = None
+        best_score = 0
+        
+        for pattern_type, pattern_info in self.question_patterns.items():
+            match_count = sum(1 for p in pattern_info['patterns'] if p in question_lower)
+            score = match_count / len(pattern_info['patterns']) if pattern_info['patterns'] else 0
+            
+            if score > best_score:
+                best_score = score
+                best_match = pattern_type
+                
+        if best_match and best_score > 0.2:
+            # Return the first category associated with this pattern type
+            return self.question_patterns[best_match]['categories'][0]
+        
+        return "General Information"  # Default category 

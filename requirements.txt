@@ -23,3 +23,7 @@ python-Levenshtein==0.21.1  # Optional but recommended for better performance wi
 # Utilities
 tqdm==4.65.0
 requests==2.31.0 
+
+# Additional dependencies
+transformers==4.30.0  # Add the appropriate version
+torch==2.0.0          # Add the appropriate version

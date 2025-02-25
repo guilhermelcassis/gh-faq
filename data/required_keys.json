@@ -2,28 +2,53 @@
     "category_weights": [
         "Location and Travel",
         "Fees",
+        "Daily Schedule",
+        "Accommodation",
+        "Selection Process",
+        "Mission Trips",
         "General Information"
     ],
     "transport_synonyms": [
         "uber",
         "taxi",
-        "bus"
+        "bus",
+        "get there",
+        "arrive",
+        "reach",
+        "airport"
     ],
     "activity_synonyms": [
         "happen",
         "activities",
         "program",
         "do",
-        "happen",
-        "happenings",
-        "happenings at",
-        "happenings in",
-        "happenings at school",
-        "happenings in school"
+        "schedule"
+    ],
+    "accommodation_synonyms": [
+        "accommodation",
+        "stay",
+        "housing",
+        "dormitory"
+    ],
+    "fee_synonyms": [
+        "cost",
+        "price",
+        "fee",
+        "payment"
+    ],
+    "selection_synonyms": [
+        "interview",
+        "selection",
+        "application",
+        "requirements"
     ],
     "category_patterns": [
         "Location and Travel",
         "Daily Schedule",
-        "Accommodation"
+        "Accommodation",
+        "Selection Process",
+        "Fees",
+        "Mission Trips",
+        "General Information"
     ]
 } 

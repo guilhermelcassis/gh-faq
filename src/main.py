@@ -218,39 +218,6 @@ def enhanced_search(question: str, index) -> List[Dict]:
         normalized_question = rag_enhancer.normalize_question(question)
         question_lower = question.lower()
         
-        # Create a direct mapping for common questions to their categories
-        question_category_map = {
-            "cost": "Fees",
-            "price": "Fees",
-            "fee": "Fees",
-            "expensive": "Fees",
-            "cheap": "Fees",
-            "pack": "Practical Information",
-            "bring": "Practical Information",
-            "location": "Location and Travel",
-            "where": "Location and Travel",
-            "get there": "Location and Travel",
-            "travel": "Location and Travel",
-            "airport": "Location and Travel",
-            "routine": "Daily Schedule",
-            "schedule": "Daily Schedule",
-            "daily": "Daily Schedule",
-            "learn": "Daily Schedule",
-            "activities": "Daily Schedule",
-            "do at school": "Daily Schedule",
-            "mission trip": "Mission Trips",
-            "minimum age": "Eligibility",
-            "age requirement": "Eligibility"
-        }
-        
-        # First, try to find a direct category match
-        target_category = None
-        for key, category in question_category_map.items():
-            if key in question_lower:
-                target_category = category
-                logger.info(f"Detected {key} in question, targeting category: {category}")
-                break
-        
         # Generate embedding for vector search
         embedding = generate_embedding(normalized_question)
         
@@ -278,7 +245,68 @@ def enhanced_search(question: str, index) -> List[Dict]:
             matches = [{'metadata': match['metadata'], 'score': match['score']} for match in results['matches']]
         
         # Log the raw results for debugging
-        logger.info(f"Raw search results for '{question}': {matches}")
+        logger.info(f"Raw search results for '{question}': {matches[:2]}")  # Only log first 2 for brevity
+        
+        # Direct keyword matching for common question types
+        if any(word in question_lower for word in ["cost", "price", "fee", "expensive", "cheap", "afford"]):
+            logger.info("Detected fee related question")
+            for match in matches:
+                metadata = match['metadata']
+                answer = metadata.get('answer', '').lower()
+                category = metadata.get('category', '')
+                
+                if category == "Fees" or "850" in answer or "€" in answer or "euro" in answer or "fee" in answer:
+                    logger.info(f"Found fee-related answer: {metadata.get('question', '')}")
+                    match['score'] = 0.95
+                    return [match]
+        
+        if any(word in question_lower for word in ["where", "location", "address", "place", "venue"]):
+            logger.info("Detected location related question")
+            for match in matches:
+                metadata = match['metadata']
+                category = metadata.get('category', '')
+                
+                if category == "Location and Travel":
+                    logger.info(f"Found location-related answer: {metadata.get('question', '')}")
+                    match['score'] = 0.95
+                    return [match]
+        
+        if any(word in question_lower for word in ["schedule", "daily", "routine", "activities", "program", "what will i do"]):
+            logger.info("Detected schedule related question")
+            for match in matches:
+                metadata = match['metadata']
+                category = metadata.get('category', '')
+                
+                if category == "Daily Schedule":
+                    logger.info(f"Found schedule-related answer: {metadata.get('question', '')}")
+                    match['score'] = 0.95
+                    return [match]
+        
+        if any(word in question_lower for word in ["accommodation", "stay", "housing", "dormitory", "sleep"]):
+            logger.info("Detected accommodation related question")
+            for match in matches:
+                metadata = match['metadata']
+                category = metadata.get('category', '')
+                
+                if category == "Accommodation":
+                    logger.info(f"Found accommodation-related answer: {metadata.get('question', '')}")
+                    match['score'] = 0.95
+                    return [match]
+        
+        if any(word in question_lower for word in ["mission", "trip", "outreach", "after school"]):
+            logger.info("Detected mission trip related question")
+            for match in matches:
+                metadata = match['metadata']
+                category = metadata.get('category', '')
+                
+                if category == "Mission Trips":
+                    logger.info(f"Found mission trip-related answer: {metadata.get('question', '')}")
+                    match['score'] = 0.95
+                    return [match]
+                    
+        # Try category-based matching using RAGEnhancer
+        target_category = rag_enhancer.get_question_category(question)
+        logger.info(f"Detected likely category for question: {target_category}")
         
         # If we have a target category, prioritize matches from that category
         if target_category and matches:
@@ -294,44 +322,17 @@ def enhanced_search(question: str, index) -> List[Dict]:
                 logger.info(f"Found {len(category_matches)} matches in target category: {target_category}")
                 return category_matches
         
-        # Special handling for specific question types
-        if "cost" in question_lower or "price" in question_lower or "fee" in question_lower or "expensive" in question_lower:
-            # Look for fee information in any match
-            for match in matches:
-                metadata = match['metadata']
-                answer = metadata.get('answer', '').lower()
-                if ('850' in answer and ('€' in answer or 'euro' in answer)) or 'fee' in answer:
-                    logger.info(f"Found fee-related answer in content")
-                    match['score'] = 0.95  # High confidence
-                    return [match]
-        
-        if "pack" in question_lower or "bring" in question_lower or "take with" in question_lower:
-            # Look for packing information
-            for match in matches:
-                metadata = match['metadata']
-                question_text = metadata.get('question', '').lower()
-                if 'pack' in question_text:
-                    logger.info(f"Found packing-related answer: {metadata.get('question')}")
-                    match['score'] = 0.95  # High confidence
-                    return [match]
-        
-        if "where" in question_lower or "location" in question_lower or "get there" in question_lower:
-            # Look for location information
-            for match in matches:
-                metadata = match['metadata']
-                if 'Location' in metadata.get('category', ''):
-                    logger.info(f"Found location-related answer in category: {metadata.get('category')}")
-                    match['score'] = 0.95  # High confidence
-                    return [match]
-        
-        if "daily" in question_lower or "routine" in question_lower or "schedule" in question_lower or "do at school" in question_lower:
-            # Look for daily schedule information
-            for match in matches:
-                metadata = match['metadata']
-                if 'Daily Schedule' in metadata.get('category', ''):
-                    logger.info(f"Found schedule-related answer in category: {metadata.get('category')}")
-                    match['score'] = 0.95  # High confidence
-                    return [match]
+        # Special handling for specific question types based on question_patterns.json
+        for pattern_type, pattern_info in rag_enhancer.question_patterns.items():
+            if any(p in question_lower for p in pattern_info['patterns']):
+                # Look for answers containing the answer terms
+                for match in matches:
+                    metadata = match['metadata']
+                    answer = metadata.get('answer', '').lower()
+                    if any(term in answer for term in pattern_info['answer_terms']):
+                        logger.info(f"Found {pattern_type}-related answer in content")
+                        match['score'] = 0.95  # High confidence
+                        return [match]
         
         # If no specific matches found, return the top match if it has a good score
         if matches and matches[0]['score'] > 0.8:
@@ -393,12 +394,27 @@ async def ask_question(request: QuestionRequest):
     try:
         question = request.question
         logger.info(f"Processing question: {question}")
-        
-        # Check for direct category matches first
         question_lower = question.lower()
         
-        # Direct mappings for common questions
-        if any(term in question_lower for term in ["cost", "price", "fee", "expensive", "cheap"]):
+        # Handle specific question types that need fallback answers
+        if any(word in question_lower for word in ["age", "minimum age", "how old", "requirement"]):
+            logger.info("Detected age requirement question")
+            return get_fallback_answer(question)
+            
+        if any(word in question_lower for word in ["pack", "bring", "luggage", "clothes"]):
+            logger.info("Detected packing question")
+            return get_fallback_answer(question)
+            
+        if any(phrase in question_lower for phrase in ["what will happen", "what happens", "activities", "daily routine"]) and "school" in question_lower:
+            logger.info("Detected school activities question")
+            return get_fallback_answer(question)
+            
+        if any(phrase in question_lower for phrase in ["get to", "travel to", "directions", "transportation"]) and "school" in question_lower:
+            logger.info("Detected transportation question")
+            return get_fallback_answer(question)
+        
+        # Direct keyword matching for common question types
+        if any(word in question_lower for word in ["cost", "price", "fee", "expensive", "cheap", "afford"]):
             logger.info("Direct match for fee question")
             fee_results = search_by_category("Fees")
             if fee_results:
@@ -419,7 +435,18 @@ async def ask_question(request: QuestionRequest):
                     "sources": [{"category": "Fees", "question": metadata.get('question', ''), "relevance": 0.95}]
                 }
         
-        if any(term in question_lower for term in ["daily", "routine", "schedule", "do at school", "learn at", "what will i do"]):
+        if any(word in question_lower for word in ["where", "location", "address", "place", "venue"]):
+            logger.info("Direct match for location question")
+            location_results = search_by_category("Location and Travel")
+            if location_results:
+                metadata = location_results[0]['metadata']
+                return {
+                    "answer": metadata.get('answer', ''),
+                    "confidence": 0.95,
+                    "sources": [{"category": "Location and Travel", "question": metadata.get('question', ''), "relevance": 0.95}]
+                }
+        
+        if any(word in question_lower for word in ["schedule", "daily", "routine", "activities", "program", "what will i do"]):
             logger.info("Direct match for schedule question")
             schedule_results = search_by_category("Daily Schedule")
             if schedule_results:
@@ -430,33 +457,18 @@ async def ask_question(request: QuestionRequest):
                     "sources": [{"category": "Daily Schedule", "question": metadata.get('question', ''), "relevance": 0.95}]
                 }
         
-        # IMPROVED TRAVEL DETECTION - Fix for "How do I get to the school?"
-        if any(term in question_lower for term in ["where", "location", "get to", "travel to", "how do i get", "directions", "airport"]):
-            logger.info("Direct match for location/travel question")
-            location_results = search_by_category("Location and Travel")
-            if location_results:
-                metadata = location_results[0]['metadata']
+        if any(word in question_lower for word in ["accommodation", "stay", "housing", "dormitory", "sleep"]):
+            logger.info("Direct match for accommodation question")
+            accommodation_results = search_by_category("Accommodation")
+            if accommodation_results:
+                metadata = accommodation_results[0]['metadata']
                 return {
                     "answer": metadata.get('answer', ''),
                     "confidence": 0.95,
-                    "sources": [{"category": "Location and Travel", "question": metadata.get('question', ''), "relevance": 0.95}]
+                    "sources": [{"category": "Accommodation", "question": metadata.get('question', ''), "relevance": 0.95}]
                 }
         
-        if any(term in question_lower for term in ["pack", "bring", "take with", "luggage"]):
-            logger.info("Direct match for packing question")
-            packing_results = search_by_category("Practical Information")
-            if packing_results:
-                for result in packing_results:
-                    metadata = result['metadata']
-                    if 'pack' in metadata.get('question', '').lower():
-                        return {
-                            "answer": metadata.get('answer', ''),
-                            "confidence": 0.95,
-                            "sources": [{"category": "Practical Information", "question": metadata.get('question', ''), "relevance": 0.95}]
-                        }
-        
-        # Mission trips specific detection
-        if "mission" in question_lower or "trip" in question_lower:
+        if any(word in question_lower for word in ["mission", "trip", "outreach", "after school"]):
             logger.info("Direct match for mission trip question")
             mission_results = search_by_category("Mission Trips")
             if mission_results:
@@ -465,6 +477,32 @@ async def ask_question(request: QuestionRequest):
                     "answer": metadata.get('answer', ''),
                     "confidence": 0.95,
                     "sources": [{"category": "Mission Trips", "question": metadata.get('question', ''), "relevance": 0.95}]
+                }
+        
+        # Try category-based matching using RAGEnhancer
+        target_category = rag_enhancer.get_question_category(question)
+        logger.info(f"Detected likely category: {target_category}")
+        
+        # Check for direct category matches
+        if target_category != "General Information":
+            logger.info(f"Direct match for {target_category} question")
+            category_results = search_by_category(target_category)
+            if category_results:
+                metadata = category_results[0]['metadata']
+                answer = metadata.get('answer', '')
+                
+                # Format the answer to fix encoding issues
+                if 'â' in answer:
+                    answer = answer.replace('â', '€')
+                
+                # Ensure Euro symbol is properly encoded
+                if '850' in answer and '€' not in answer and 'euro' not in answer.lower():
+                    answer = answer.replace('850', '850€')
+                
+                return {
+                    "answer": answer,
+                    "confidence": 0.95,
+                    "sources": [{"category": target_category, "question": metadata.get('question', ''), "relevance": 0.95}]
                 }
         
         # If no direct category match, use enhanced search
@@ -822,12 +860,11 @@ def keyword_fallback_search(question: str) -> List[Dict]:
         # Normalize question
         normalized_question = question.lower()
         
-        # Special case handling for common questions
-        if any(term in normalized_question for term in ['where', 'location', 'get to', 'address']):
-            # Look for location-related FAQs
+        # Direct keyword matching for common question types
+        if any(word in normalized_question for word in ["cost", "price", "fee", "expensive", "cheap", "afford"]):
+            logger.info("Fallback detected fee question")
             for faq in faq_data['faqs']:
-                if 'Location and Travel' in faq['category']:
-                    logger.info(f"Fallback found location-related FAQ: {faq['question']}")
+                if faq['category'] == "Fees":
                     return [{
                         'metadata': {
                             'question': faq['question'],
@@ -839,12 +876,10 @@ def keyword_fallback_search(question: str) -> List[Dict]:
                         'score': 0.95
                     }]
         
-        # Check for cost/price related questions
-        if any(term in normalized_question for term in ['cost', 'price', 'fee', 'expensive', 'cheap']):
-            # Look for fee-related FAQs
+        if any(word in normalized_question for word in ["where", "location", "address", "place", "venue"]):
+            logger.info("Fallback detected location question")
             for faq in faq_data['faqs']:
-                if 'Fees' in faq['category']:
-                    logger.info(f"Fallback found fee-related FAQ: {faq['question']}")
+                if faq['category'] == "Location and Travel":
                     return [{
                         'metadata': {
                             'question': faq['question'],
@@ -856,8 +891,47 @@ def keyword_fallback_search(question: str) -> List[Dict]:
                         'score': 0.95
                     }]
         
-        # Check for pattern matches
-        for pattern_type, pattern_info in question_patterns.items():
+        if any(word in normalized_question for word in ["schedule", "daily", "routine", "activities", "program", "what will i do"]):
+            logger.info("Fallback detected schedule question")
+            for faq in faq_data['faqs']:
+                if faq['category'] == "Daily Schedule":
+                    return [{
+                        'metadata': {
+                            'question': faq['question'],
+                            'question_variations': faq.get('question_variations', []),
+                            'category': faq['category'],
+                            'answer': faq['answer'],
+                            'keywords': faq.get('keywords', [])
+                        },
+                        'score': 0.95
+                    }]
+        
+        # Try category-based matching using RAGEnhancer
+        target_category = rag_enhancer.get_question_category(question)
+        logger.info(f"Fallback search detected category: {target_category}")
+        
+        # First try to find FAQs in the target category
+        if target_category != "General Information":
+            matching_faqs = []
+            for faq in faq_data['faqs']:
+                if faq['category'] == target_category:
+                    matching_faqs.append({
+                        'metadata': {
+                            'question': faq['question'],
+                            'question_variations': faq.get('question_variations', []),
+                            'category': faq['category'],
+                            'answer': faq['answer'],
+                            'keywords': faq.get('keywords', [])
+                        },
+                        'score': 0.9
+                    })
+            
+            if matching_faqs:
+                logger.info(f"Fallback found {len(matching_faqs)} FAQs in category: {target_category}")
+                return matching_faqs
+        
+        # Check for pattern matches from question_patterns.json
+        for pattern_type, pattern_info in rag_enhancer.question_patterns.items():
             if any(p in normalized_question for p in pattern_info['patterns']):
                 logger.info(f"Fallback detected {pattern_type} pattern in question: {question}")
                 
@@ -1168,6 +1242,50 @@ def search_by_category(category: str) -> List[Dict]:
     except Exception as e:
         logger.error(f"Error searching by category: {str(e)}", exc_info=True)
         return []
+
+# Add this function to handle fallback responses for questions without direct answers
+def get_fallback_answer(question: str) -> Dict:
+    """Provide a fallback answer when no specific answer is found."""
+    question_lower = question.lower()
+    
+    # Age requirement fallback
+    if any(word in question_lower for word in ["age", "minimum age", "how old", "requirement"]):
+        return {
+            "answer": "There is no specific minimum age requirement mentioned for the Greenhouse school. The school is designed for people of various ages who want to experience revival and transformation. For specific eligibility requirements, please contact the organizers directly.",
+            "confidence": 0.7,
+            "sources": [{"category": "General Information", "question": "Age requirements", "relevance": 0.7}]
+        }
+    
+    # Packing fallback
+    if any(word in question_lower for word in ["pack", "bring", "luggage", "clothes"]):
+        return {
+            "answer": "Specific packing information will be provided to registered participants. Generally, you should bring comfortable clothes, personal items, and any materials specified in your acceptance information. The school is located in Palermo, Italy, so pack appropriate clothing for the local weather during your stay.",
+            "confidence": 0.7,
+            "sources": [{"category": "Practical Information", "question": "What to pack", "relevance": 0.7}]
+        }
+    
+    # School activities fallback
+    if any(phrase in question_lower for phrase in ["what will happen", "what happens", "activities", "daily routine"]):
+        return {
+            "answer": "The Greenhouse school includes teaching sessions, practical activation of spiritual gifts, worship, prayer, and community activities. The program is designed to provide both theoretical knowledge and practical experience in revival and transformation. Specific daily schedules will be provided to participants.",
+            "confidence": 0.7,
+            "sources": [{"category": "Daily Schedule", "question": "What happens at the school", "relevance": 0.7}]
+        }
+    
+    # Transportation fallback
+    if any(phrase in question_lower for phrase in ["get to", "travel to", "directions", "transportation"]):
+        return {
+            "answer": "The Greenhouse school is located in Palermo, Italy. Participants typically arrive via Palermo Airport (PMO). Detailed transportation information and directions will be provided to registered participants. If you need specific travel assistance, please contact the organizers directly.",
+            "confidence": 0.7,
+            "sources": [{"category": "Location and Travel", "question": "How to get to the school", "relevance": 0.7}]
+        }
+    
+    # Default fallback
+    return {
+        "answer": "I don't have specific information to answer that question. Please contact the Greenhouse organizers directly for more details about your inquiry.",
+        "confidence": 0.5,
+        "sources": [{"category": "General Information", "question": "General inquiry", "relevance": 0.5}]
+    }
 
 if __name__ == "__main__":
     import uvicorn

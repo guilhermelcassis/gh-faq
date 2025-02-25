@@ -1,18 +1,37 @@
 {
     "transport_synonyms": {
-        "uber": ["transportation", "bus", "travel"],
-        "taxi": ["transportation", "bus", "travel"],
-        "bus": ["transportation", "travel"],
-        "get there": ["transportation", "travel", "directions"],
-        "arrive": ["transportation", "travel"],
-        "reach": ["transportation", "travel"],
-        "airport": ["fly", "flight", "travel", "transportation"]
+        "uber": ["transportation", "bus", "travel", "taxi"],
+        "taxi": ["transportation", "bus", "travel", "uber"],
+        "bus": ["transportation", "travel", "public transport"],
+        "get there": ["transportation", "travel", "directions", "arrive", "reach"],
+        "arrive": ["transportation", "travel", "get there", "reach"],
+        "reach": ["transportation", "travel", "get there", "arrive"],
+        "airport": ["fly", "flight", "travel", "transportation", "plane"]
     },
     "activity_synonyms": {
-        "happen": ["activities", "schedule", "routine", "daily"],
-        "activities": ["schedule", "routine", "daily"],
-        "program": ["schedule", "routine", "daily"],
-        "do": ["activities", "schedule", "routine","do", "happenings", "happenings at", "happenings in", "happenings at school", "happenings in school"]
+        "happen": ["activities", "schedule", "routine", "daily", "program", "events"],
+        "activities": ["schedule", "routine", "daily", "program", "events", "happenings"],
+        "program": ["schedule", "routine", "daily", "activities", "events"],
+        "do": ["activities", "schedule", "routine", "happenings", "events", "program"],
+        "schedule": ["activities", "routine", "daily", "program", "timetable", "agenda"]
+    },
+    "accommodation_synonyms": {
+        "accommodation": ["stay", "housing", "room", "dormitory", "lodging", "residence"],
+        "stay": ["accommodation", "housing", "room", "dormitory", "lodging", "residence"],
+        "housing": ["accommodation", "stay", "room", "dormitory", "lodging", "residence"],
+        "dormitory": ["accommodation", "stay", "housing", "room", "dorm", "residence"]
+    },
+    "fee_synonyms": {
+        "cost": ["price", "fee", "payment", "expense", "charge"],
+        "price": ["cost", "fee", "payment", "expense", "charge"],
+        "fee": ["cost", "price", "payment", "expense", "charge"],
+        "payment": ["cost", "price", "fee", "expense", "charge"]
+    },
+    "selection_synonyms": {
+        "interview": ["selection", "process", "application", "assessment", "evaluation"],
+        "selection": ["interview", "process", "application", "assessment", "evaluation"],
+        "application": ["interview", "selection", "process", "assessment", "evaluation"],
+        "requirements": ["criteria", "qualifications", "prerequisites", "conditions"]
     },
     "question_synonyms": {
         "accommodation": ["stay", "housing", "room", "dormitory", "acomodation", "accomodation"],

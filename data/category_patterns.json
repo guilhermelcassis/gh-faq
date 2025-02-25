@@ -4,7 +4,8 @@
         "how.*(?:to|do|can).*(?:get|reach|arrive|travel).*(?:there|school)",
         "(?:airport|transportation|bus|taxi|uber).*(?:to|from|available)",
         "directions?.*(?:to|for|school)",
-        ".*airport"
+        ".*airport",
+        "where.*(?:is|are).*(?:school|venue|location)"
     ],
     "Daily Schedule": [
         "what.*(?:happen|do|activities|schedule)",
@@ -13,18 +14,43 @@
         "what.*during.*(?:school|day)",
         "how.*(?:is|are).*(?:days|activities)",
         "what.*will.*(?:i|we).*do*",
-        "what.*will.*happen.*(?:at|in).*school"
+        "what.*will.*happen.*(?:at|in).*school",
+        "what.*(?:is|are).*(?:the|).*activities"
     ],
     "Accommodation": [
         "(?:where|how).*(?:stay|sleep|live)",
         "(?:accommodation|housing|room|dormitory)",
         "(?:acomodation|accomodation|acommodation)",
-        "living.*arrangements"
+        "living.*arrangements",
+        "where.*(?:will|do).*(?:i|we).*stay"
     ],
     "Selection Process": [
         "(?:how|what).*(?:selection|process|approved)",
         "(?:interview|application|selection)",
         "how.*(?:join|apply|register)",
-        "what.*requirements"
+        "what.*requirements",
+        "how.*(?:do|can).*(?:i|we).*(?:apply|join|register)"
+    ],
+    "Fees": [
+        "(?:how|what).*(?:much|cost|price|fee)",
+        "(?:cost|price|fee).*(?:is|are|for)",
+        "(?:expensive|cheap|afford)",
+        "(?:€|euro).*(?:cost|price|fee)",
+        "payment.*(?:method|option)",
+        "how.*(?:do|can).*(?:i|we).*pay"
+    ],
+    "Mission Trips": [
+        "(?:what|tell).*(?:about).*(?:mission|trip)",
+        "(?:mission|trip).*(?:after|optional)",
+        "(?:outreach|travel).*(?:after|during)",
+        "10-day.*(?:mission|trip)",
+        "what.*(?:happens|do).*after.*school"
+    ],
+    "General Information": [
+        "(?:what|tell).*(?:is|about)",
+        "information.*(?:about|on)",
+        "details.*(?:about|on)",
+        "overview.*(?:of|about)",
+        "general.*(?:information|details)"
     ]
 } 

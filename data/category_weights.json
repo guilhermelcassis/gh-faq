@@ -5,7 +5,9 @@
         "address": 2.0,
         "how to get there": 2.0,
         "directions": 2.0,
-        "venue": 2.0
+        "venue": 2.0,
+        "airport": 2.0,
+        "transportation": 1.8
     },
     "Fees": {
         "cost": 2.0,
@@ -15,10 +17,47 @@
         "€": 2.0,
         "euro": 2.0,
         "expensive": 2.0,
-        "cheap": 2.0
+        "cheap": 2.0,
+        "payment": 1.8,
+        "afford": 1.8
+    },
+    "Daily Schedule": {
+        "schedule": 2.0,
+        "activities": 2.0,
+        "daily": 2.0,
+        "routine": 2.0,
+        "program": 1.8,
+        "what will i do": 2.0,
+        "day": 1.5
+    },
+    "Accommodation": {
+        "stay": 2.0,
+        "accommodation": 2.0,
+        "housing": 2.0,
+        "room": 1.8,
+        "dormitory": 1.8,
+        "sleep": 1.5
+    },
+    "Selection Process": {
+        "interview": 2.0,
+        "selection": 2.0,
+        "application": 2.0,
+        "apply": 1.8,
+        "requirements": 1.8,
+        "process": 1.5
+    },
+    "Mission Trips": {
+        "mission": 2.0,
+        "trip": 2.0,
+        "outreach": 1.8,
+        "10-day": 1.8,
+        "after school": 1.5
     },
     "General Information": {
         "what is": 2.0,
-        "about": 1.5
+        "about": 1.5,
+        "information": 1.5,
+        "details": 1.5,
+        "overview": 1.5
     }
 } 

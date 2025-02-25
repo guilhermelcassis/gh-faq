@@ -5,9 +5,19 @@
     "answer_terms": ["€", "euro", "cost", "fee", "price", "850"]
   },
   "location": {
-    "patterns": ["where", "location", "place", "address", "city", "country", "venue"],
+    "patterns": ["where", "location", "place", "address", "city", "country", "venue", "directions", "how to get there"],
     "categories": ["Location and Travel"],
-    "answer_terms": ["located", "location", "address", "italy", "palermo"]
+    "answer_terms": ["located", "location", "address", "italy", "palermo", "directions", "airport"]
+  },
+  "schedule": {
+    "patterns": ["schedule", "daily", "routine", "activities", "program", "what will i do", "what happens", "day"],
+    "categories": ["Daily Schedule"],
+    "answer_terms": ["morning", "afternoon", "evening", "activities", "schedule", "daily"]
+  },
+  "accommodation": {
+    "patterns": ["stay", "sleep", "live", "accommodation", "housing", "room", "dormitory", "acomodation", "accomodation"],
+    "categories": ["Accommodation"],
+    "answer_terms": ["stay", "room", "dormitory", "accommodation", "housing"]
   },
   "mission": {
     "patterns": ["mission", "trip", "travel", "after school", "outreach"],
@@ -15,13 +25,18 @@
     "answer_terms": ["mission", "trip", "optional", "10-day"]
   },
   "interview": {
-    "patterns": ["interview", "selection", "recruitment", "process", "apply", "application"],
+    "patterns": ["interview", "selection", "recruitment", "process", "apply", "application", "requirements"],
     "categories": ["Selection Process"],
     "answer_terms": ["process", "selection", "call", "video", "criteria"]
   },
   "registration": {
-    "patterns": ["register", "sign up", "join", "apply", "enroll", "application"],
+    "patterns": ["register", "sign up", "join", "apply", "enroll", "application", "how to join"],
     "categories": ["Registration Process"],
     "answer_terms": ["sign up", "register", "apply", "link", "form"]
+  },
+  "general": {
+    "patterns": ["what is", "about", "tell me about", "information"],
+    "categories": ["General Information"],
+    "answer_terms": ["information", "about", "details"]
   }
 } 
