@@ -35,9 +35,9 @@ def test_questions(questions):
 
 if __name__ == "__main__":
     # Test health endpoint
-#    if not test_health():
-#        print("Health check failed. Exiting.")
-#        exit(1)
+    if not test_health():
+        print("Health check failed. Exiting.")
+        exit(1)
     
     # Test some questions
     test_questions([

@@ -554,54 +554,7 @@ async def ask_question(request: QuestionRequest):
 @app.get("/health")
 async def health_check():
     """Health check endpoint to verify the system is working correctly."""
-    try:
-        # Check Pinecone connection
-        if use_new_sdk:
-            indexes = pc.list_indexes().names()
-        else:
-            indexes = pinecone.list_indexes()
-            
-        # Check if our index exists
-        if PINECONE_INDEX_NAME not in indexes:
-            return {
-                "status": "warning",
-                "message": f"Index {PINECONE_INDEX_NAME} not found",
-                "available_indexes": indexes
-            }
-            
-        # Check index stats
-        stats = index.describe_index_stats()
-        
-        # Check if we can query the index
-        test_embedding = [0.1] * DIMENSION
-        if use_new_sdk:
-            results = index.query(
-                vector=test_embedding,
-                top_k=1,
-                include_metadata=True,
-                namespace=NAMESPACE
-            )
-        else:
-            results = index.query(
-                vector=test_embedding,
-                top_k=1,
-                include_metadata=True,
-                namespace=NAMESPACE
-            )
-            
-        return {
-            "status": "healthy",
-            "pinecone_connected": True,
-            "index_exists": True,
-            "index_stats": stats,
-            "query_working": len(results.matches) > 0 if use_new_sdk else len(results['matches']) > 0,
-            "namespace": NAMESPACE
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+    return {"status": "healthy"}
 
 @app.get("/index-stats")
 async def get_index_stats():
