@@ -37,7 +37,7 @@ NAMESPACE=ns1
 ### Docker Deployment
 
 1. Build the Docker image: `docker build -t faq-project .`
-2. Run the container: `docker run -p 8000:8000 --env-file ./.env faq-project`
+2. Run the container: `docker run -p 8080:8080 --env-file ./.env faq-project`
 
 ## API Endpoints
 

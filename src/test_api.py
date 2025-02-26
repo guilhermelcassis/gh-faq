@@ -3,7 +3,7 @@ import json
 import time
 
 def test_health():
-    response = requests.get('http://localhost:8000/health')  # Adjust the endpoint as necessary
+    response = requests.get('http://localhost:8080/health')  # Adjust the endpoint as necessary
     print(f"Response Status Code: {response.status_code}")  # Check the status code
     if response.status_code == 200:
         print(json.dumps(response.json(), indent=2))
@@ -20,7 +20,7 @@ def test_questions(questions):
         
         start_time = time.time()
         response = requests.post(
-            "http://localhost:8000/ask",
+            "http://localhost:8080/ask",
             json={"question": question}
         )
         end_time = time.time()
